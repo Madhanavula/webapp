@@ -1,0 +1,95 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'
+    }
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Madhanavula/webapp.git'
+            }
+        }
+
+        stage('Verify Tools') {
+            steps {
+                sh 'mvn -version'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('Sonarqube') {
+                    sh '''
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=webapp \
+                    -Dsonar.projectName=webapp
+                    '''
+                }
+            }
+        }
+        stage('Artifact uploader') {
+            steps {
+                nexusArtifactUploader artifacts: [[artifactId: 'my-webapp', classifier: '', file: 'target/my-webapp.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'com.company', nexusUrl: '34.204.75.117:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'madhan-repo', version: '1.0-SNAPSHOT'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t my-webapp:latest .
+                docker tag my-webapp:latest kubemadhan/my-webapp:latest
+                docker images
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push kubemadhan/my-webapp:latest
+                    docker logout
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                sh '''
+                docker pull kubemadhan/my-webapp:latest
+
+                docker stop my-webapp || true
+                docker rm my-webapp || true
+
+                docker run -d \
+                --name my-webapp \
+                -p 8082:8080 \
+                kubemadhan/my-webapp:latest
+                '''
+            }
+        }
+        
+    }
+}
