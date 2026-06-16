@@ -44,7 +44,7 @@ pipeline {
         }
         stage('Artifact uploader') {
             steps {
-                nexusArtifactUploader artifacts: [[artifactId: 'my-webapp', classifier: '', file: 'target/my-webapp.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'com.company', nexusUrl: '34.204.75.117:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'madhan-repo', version: '1.0-SNAPSHOT'
+                nexusArtifactUploader artifacts: [[artifactId: 'my-webapp', classifier: '', file: 'target/my-webapp.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'com.company', nexusUrl: '54.209.172.18:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'madhan-repo', version: '1.0-SNAPSHOT'
             }
         }
         
@@ -85,7 +85,7 @@ pipeline {
 
                 docker run -d \
                 --name my-webapp \
-                -p 8082:8080 \
+                -p 8083:8080 \
                 kubemadhan/my-webapp:latest
                 '''
             }
